@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Gateway Global — Portfolio Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:#F4F1EB;color:#1A1A1A}
+:root{--navy:#0F1E3D;--navy2:#1B3060;--gold:#C9A84C;--gold-d:#A8882A;--cream:#F4F1EB;--surface:#fff;--surface2:#F7F5F0;--border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);--muted:#555;--hint:#888;--r-lg:14px;--r-md:8px;--r-sm:6px}
+#app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:215px;flex-shrink:0;background:var(--navy);display:flex;flex-direction:column;box-shadow:2px 0 16px rgba(0,0,0,0.18);z-index:10}
+.sidebar-logo{padding:24px 22px 18px;border-bottom:1px solid rgba(255,255,255,0.07)}
+.logo-mark{font-family:'DM Serif Display',serif;font-size:18px;color:#fff}.logo-mark span{color:var(--gold)}
+.logo-sub{font-size:9.5px;color:rgba(255,255,255,0.28);letter-spacing:0.12em;text-transform:uppercase;margin-top:4px}
+.sidebar-nav{flex:1;padding:14px 9px}
+.nav-item{display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:var(--r-md);color:rgba(255,255,255,0.42);font-size:13px;cursor:pointer;margin-bottom:3px;border:1px solid transparent;transition:all 0.15s;user-select:none}
+.nav-item svg{width:15px;height:15px;flex-shrink:0;opacity:0.65}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.72)}
+.nav-item.active{background:rgba(201,168,76,0.15);color:var(--gold);border-color:rgba(201,168,76,0.28);font-weight:700}
+.nav-item.active svg{opacity:1}
+.sidebar-bottom{padding:14px 22px;border-top:1px solid rgba(255,255,255,0.07);font-size:10px;color:rgba(255,255,255,0.2);line-height:1.8}
+.sidebar-bottom b{color:rgba(255,255,255,0.4)}
+.main{flex:1;overflow-y:auto;padding:30px 34px;background:var(--cream)}
+.pg-title{font-size:23px;font-weight:800;color:var(--navy);margin-bottom:4px;letter-spacing:-0.025em}
+.pg-sub{font-size:12.5px;color:var(--hint);margin-bottom:24px}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:22px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:17px 20px;border-top:3px solid var(--gold)}
+.stat-lbl{font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px}
+.stat-val{font-size:27px;font-weight:900;color:var(--navy);line-height:1;letter-spacing:-0.03em}
+.stat-sub{font-size:11px;color:var(--hint);margin-top:3px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:22px 24px}
+.card-title{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:15px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px}
+.badge{display:inline-block;font-size:10.5px;font-weight:600;padding:2px 9px;border-radius:20px;background:#F0EDE5;color:var(--muted);white-space:nowrap}
+.badge-green{background:rgba(5,150,105,0.1);color:#065f46}
+.badge-blue{background:rgba(37,99,235,0.1);color:#1e40af}
+.badge-gold{background:rgba(201,168,76,0.14);color:#8a6820}
+.badge-navy{background:rgba(27,48,96,0.1);color:var(--navy2)}
+.badge-pink{background:rgba(190,24,93,0.1);color:#9d174d}
+.btn{padding:8px 17px;border-radius:var(--r-md);border:1px solid var(--border2);background:var(--surface);color:#1A1A1A;font-size:12.5px;font-family:inherit;cursor:pointer;transition:all 0.15s;font-weight:600}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--navy2);color:#fff;border-color:var(--navy2)}.btn-primary:hover{background:var(--navy)}
+.btn-gold{background:var(--gold);color:#fff;border-color:var(--gold)}.btn-gold:hover{background:var(--gold-d)}
+.btn-sm{padding:5px 12px;font-size:11.5px}
+.btn-danger{color:#b91c1c;border-color:#fecaca;background:#fff}.btn-danger:hover{background:#fef2f2}
+.btn:disabled{opacity:0.38;cursor:not-allowed}
+.prog{display:flex;gap:3px}
+.prog-seg{flex:1;height:4px;border-radius:2px;background:var(--border)}
+.prog-lbl{font-size:10px;color:var(--hint);margin-top:4px}
+.co-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:15px}
+.co-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;cursor:pointer;position:relative;overflow:hidden;transition:box-shadow 0.2s,transform 0.15s}
+.co-card:hover{box-shadow:0 8px 28px rgba(0,0,0,0.1);transform:translateY(-2px)}
+.co-accent{position:absolute;top:0;left:0;right:0;height:3px}
+.co-name{font-size:14.5px;font-weight:800;color:var(--navy);margin:8px 0 2px}
+.co-sector{font-size:11px;color:var(--hint);margin-bottom:10px}
+.co-desc{font-size:11.5px;color:var(--muted);line-height:1.6;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.co-meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px}
+.back-btn{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--gold);font-size:12.5px;font-family:inherit;cursor:pointer;padding:0;margin-bottom:20px;font-weight:700}
+.detail-grid{display:grid;grid-template-columns:3fr 2fr;gap:16px}
+.kv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}
+.kv-box{background:var(--surface2);border-radius:var(--r-sm);padding:10px 13px}
+.kv-lbl{font-size:10px;color:var(--hint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px}
+.kv-val{font-size:12.5px;font-weight:700;color:var(--navy)}
+.hl-list{list-style:none}
+.hl-list li{display:flex;gap:9px;margin-bottom:9px;font-size:12.5px;color:var(--muted);line-height:1.55}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.journey-step{display:flex;gap:12px;align-items:flex-start;margin-bottom:11px}
+.step-circle{width:27px;height:27px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;border:1.5px solid var(--border2);background:var(--surface2);color:var(--hint)}
+.step-circle.done{background:var(--navy2);color:#fff;border-color:var(--navy2)}
+.step-circle.current{border-width:2px;border-color:var(--navy2);background:var(--surface);color:var(--navy2)}
+.step-name{font-size:12.5px;color:var(--hint)}.step-name.done{color:#1A1A1A;font-weight:600}.step-name.current{color:var(--navy2);font-weight:700}
+.step-tag{font-size:10px;color:var(--gold);margin-top:1px}
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:13px}
+.inv-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:17px;cursor:pointer;transition:box-shadow 0.2s,transform 0.15s;border-top:3px solid var(--gold)}
+.inv-card:hover{box-shadow:0 6px 20px rgba(0,0,0,0.09);transform:translateY(-1px)}
+.pipe-board{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;margin-bottom:18px}
+.pipe-col{flex-shrink:0;width:160px;background:var(--surface2);border-radius:var(--r-md);padding:12px}
+.pipe-col-head{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.pipe-badge{background:var(--navy2);color:#fff;border-radius:20px;padding:1px 7px;font-size:10px;font-weight:700}
+.pipe-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;margin-bottom:8px;cursor:pointer;border-left-width:3px;transition:box-shadow 0.15s}
+.pipe-item:hover{box-shadow:0 2px 10px rgba(0,0,0,0.09)}
+.pipe-item-name{font-size:12px;font-weight:700;color:var(--navy);margin-bottom:3px}
+.pipe-item-sub{font-size:10px;color:var(--hint)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:9px 14px;color:var(--hint);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;border-bottom:2px solid var(--border);white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid var(--border);color:#1A1A1A;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--surface2)}
+.modal-overlay{position:fixed;inset:0;background:rgba(15,30,61,0.6);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.modal-box{background:var(--surface);border-radius:var(--r-lg);padding:30px 32px;width:540px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.22)}
+.modal-title{font-size:17px;font-weight:800;color:var(--navy);margin-bottom:22px}
+.form-row{margin-bottom:14px}
+.form-lbl{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;display:block;margin-bottom:5px}
+.form-input{width:100%;padding:9px 12px;border-radius:var(--r-md);border:1px solid var(--border2);background:var(--surface2);color:#1A1A1A;font-size:13px;font-family:inherit;outline:none;transition:border 0.15s}
+.form-input:focus{border-color:var(--gold);background:var(--surface)}
+textarea.form-input{resize:vertical;min-height:72px}
+.form-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-actions{display:flex;gap:10px;margin-top:22px;align-items:center}
+.filters{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.filters input,.filters select{padding:8px 12px;border-radius:var(--r-md);border:1px solid var(--border2);background:var(--surface);color:#1A1A1A;font-size:12.5px;font-family:inherit;outline:none}
+.filters input{width:210px}
+.filters input:focus,.filters select:focus{border-color:var(--gold)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--navy2);color:#fff;padding:11px 18px;border-radius:var(--r-md);font-size:13px;font-weight:600;z-index:999;opacity:0;transform:translateY(8px);transition:all 0.25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:var(--navy);gap:16px}
+.spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,0.1);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.funnel-bars{display:flex;gap:6px;align-items:flex-end;height:110px;padding:0 4px}
+.funnel-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.funnel-bar{width:100%;border-radius:3px 3px 0 0}
+.funnel-lbl{font-size:9px;color:var(--hint);text-align:center;line-height:1.3}
+.funnel-count{font-size:11px;font-weight:800;color:var(--navy)}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.detail-grid{grid-template-columns:1fr}.kv-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.sidebar{display:none}.main{padding:16px}}
+</style>
+</head>
+<body>
+<div class="loading" id="loading">
+  <div style="font-family:'DM Serif Display',serif;font-size:28px;color:#fff">GATEWAY<span style="color:#C9A84C"> GLOBAL</span></div>
+  <div class="spinner"></div>
+  <div style="font-size:13px;color:rgba(255,255,255,0.35)">Loading portfolio data…</div>
+</div>
+<div id="app" style="display:none">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">GATEWAY<span> GLOBAL</span></div>
+      <div class="logo-sub">Portfolio Intelligence</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-tab="overview" onclick="switchTab('overview')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Overview
+      </div>
+      <div class="nav-item" data-tab="portfolio" onclick="switchTab('portfolio')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Portfolio
+      </div>
+      <div class="nav-item" data-tab="pipeline" onclick="switchTab('pipeline')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/><circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"/></svg>Deal Pipeline
+      </div>
+      <div class="nav-item" data-tab="investors" onclick="switchTab('investors')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Investors
+      </div>
+      <div class="nav-item" data-tab="analytics" onclick="switchTab('analytics')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Analytics
+      </div>
+    </nav>
+    <div class="sidebar-bottom"><b>Gateway Global</b><br/>Funding Advisory · 2026</div>
+  </div>
+  <div class="main" id="main"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══ CONFIG ═══════════════════════════════════════
+const SB = window.supabase.createClient(
+  "https://ruvhhtibcxllnkbdxegx.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1dmhodGliY3hsbG5rYmR4ZWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MDI0NzgsImV4cCI6MjA5NjE3ODQ3OH0.UMoPgsagMxfTrFg1digPcoNiywU0i5G0vSk7PSKkSvE"
+);
+
+const STEPS = ["Initial Meeting","Deck Received","NDA Signed","Investor Matching","Intro Made","Due Diligence","Term Sheet","Closed"];
+const PALETTE = ["#1B3060","#2D7D46","#7B5EA7","#C9A84C","#1A6B3C","#2563EB","#D97706","#DC2626","#059669","#9333EA","#0891B2","#BE185D"];
+
+// ═══ SEED DATA ════════════════════════════════════
+const SEED_COS = [
+  {id:"c1",name:"Sensys Kenya",sector:"Enterprise IT / Banking Tech",stage:"Mature",ask:300000,currency:"USD",instrument:"Debt",founder_gender:"Male",location:"Nairobi, Kenya",website:"sensys.co.ke",revenue:"KES 35M (last FY)",description:"A 12-year-old enterprise technology firm specialising in Temenos T24 core banking systems. Key supplier to NCBA Bank with 200+ projects delivered across 8 countries including Kenya, Uganda, Tanzania, Rwanda, Mozambique, Angola, Swaziland and the Philippines.",founder_name:"Lawi Njeru",founder_email:"",highlights:["Key supplier to NCBA Bank","KES 35M revenue last FY","200+ projects, 8-country footprint","Temenos T24 specialist"],current_step:2,color:"#1B3060",suggested_investors:["Uncap (Esther Ndithi)","Untapped Global","MCE","Iungo Capital","Talanton","Yunus","Grassroot (Leone)","Sayuni (Stanley)"],notes:""},
+  {id:"c2",name:"Kiasili Agriculture",sector:"AgriTech",stage:"Early Stage",ask:75000,currency:"USD",instrument:"Equity",founder_gender:"TBC",location:"Kenya",website:"",revenue:"Early stage",description:"AgriTech venture focused on sustainable agricultural value chain development in Kenya. Active early-stage operations with investor documentation in progress. Gateway Global NDA framework governs all data room access.",founder_name:"TBC",founder_email:"",highlights:["Sustainable agricultural value chain","Gateway Global NDA in place","Flexible ask — USD 75K indicative","Active East Africa operations"],current_step:3,color:"#2D7D46",suggested_investors:["Incofin (Zawadi)","Talanton","GIF (Eugene)","Grassroot (Leone)","Livelihood Impact Fund","Truvalu","Iungo Capital","Factor[e]","Africa Climate Ventures"],notes:""},
+  {id:"c3",name:"Daima Ventures",sector:"Agricultural Finance / BaaS",stage:"Pre-Revenue",ask:1500000,currency:"USD",instrument:"Equity (8%)",founder_gender:"TBC",location:"Kampala, Uganda",website:"",revenue:"Pre-revenue",description:"Banking as a Service platform providing cooperative-based agricultural finance to Uganda's smallholder farming sector. Delivers loan products at 15% p.a. — half the cost of informal alternatives. TAM of USD 2.4B+ in Ugandan agricultural financing.",founder_name:"TBC",founder_email:"",highlights:["15% p.a. — half informal market cost","Cooperative structure replaces collateral","~2,000 cooperatives reachable Year 1","TAM: USD 2.4B+"],current_step:4,color:"#7B5EA7",suggested_investors:["Incofin (Zawadi)","Yunus (Dennis & Nelson)","GIF (Eugene)","Talanton","Grassroot (Leone)","Factor[e]","Iungo Capital","MCE","Mercy Corps (Doreen)"],notes:""},
+  {id:"c4",name:"Lubembo Trades",sector:"Agri-export / Superfoods",stage:"First Revenue",ask:150000,currency:"EUR",instrument:"Debt + Grant",founder_gender:"Female",location:"Kenya / DRC / USA",website:"lubembo.co",revenue:"First revenue Q4 2025",description:"African superfoods aggregation and export business founded by Nohémie Lubembo. First revenue Q4 2025 — exported a 20ft container at USD 5/kg. Two confirmed purchase orders ready to execute. FDA-certified US entity.",founder_name:"Nohémie Lubembo",founder_email:"hi@lubembo.co",highlights:["First revenue Q4 2025","Two confirmed POs: 40 tons/yr","QR code traceability","SDG 1, 5, 8, 13 alignment"],current_step:4,color:"#C9A84C",suggested_investors:["Incofin (Zawadi)","Talanton","Yunus","Livelihood Impact Fund","Africa Climate Ventures","MCE","Rippleworks","Grassroot (Leone)"],notes:""},
+  {id:"c5",name:"Kijani.co",sector:"B2B SaaS / Fintech",stage:"Pre-Revenue",ask:1500000,currency:"USD",instrument:"Equity",founder_gender:"Male",location:"Nairobi, Kenya",website:"kijani.co",revenue:"Pre-revenue (beta)",description:"Africa's API-first startup operating system — unified SaaS platform with M-Pesa, Flutterwave, Paystack, WhatsApp Business and 40+ integrations. IBM WatsonX AI powered. 93% beta retention rate.",founder_name:"SN (CEO/Co-Founder)",founder_email:"info@kijani.co",highlights:["IBM WatsonX AI","93% beta retention","3.2-month CAC payback","40+ API integrations"],current_step:5,color:"#1A6B3C",suggested_investors:["Enza Capital","Launch Africa","4DX (Munashe)","Breega","Antler","Future Africa","TLCom","Partech","Chui Ventures","Moonshot (Kweks)"],notes:""},
+  {id:"c6",name:"Learnademy",sector:"EdTech / LMS",stage:"Early Revenue",ask:350000,currency:"USD",instrument:"Equity",founder_gender:"Male",location:"Nairobi, Kenya",website:"learnademy.com",revenue:"USD 3K commercial (2025)",description:"All-in-one LMS for Kenyan K-12 private schools. 20+ schools, 2,000+ learners. DOHE EdTech Accelerator selected. USD 65K angel investment raised. 80–95% gross margins.",founder_name:"Muliande Alex",founder_email:"",highlights:["20+ schools, 2,000+ learners","DOHE EdTech Accelerator","USD 65K angel raised","CAC: USD 25–40 per school"],current_step:5,color:"#2563EB",suggested_investors:["Enza Capital","Beyond Capital","Katapult","Mastercard Foundation (Lucy)","Mercy Corps (Doreen)","Antler","Chui Ventures","Moonshot (Kweks)","VBAN (Kelvin)"],notes:""},
+  {id:"c7",name:"24:7 Group — Agency",sector:"Creative Economy / ESG",stage:"Revenue-Generating",ask:285000,currency:"USD",instrument:"Equity",founder_gender:"Male",location:"Nairobi, Kenya",website:"24-7.co.ke",revenue:"USD 120,750 (FY24-25)",description:"Award-winning experiential agency. Global Business Awards 2025 Africa — Best Sustainability & Social Impact Agency. Revenue: USD 105K → 120K → 138K projected.",founder_name:"Dunn Gwaro",founder_email:"events@24-7.co.ke",highlights:["Global Business Awards 2025","USD 105K → 120K → 138K","Four platform divisions","ESG & youth empowerment"],current_step:5,color:"#D97706",suggested_investors:["Beyond Capital","Katapult","Mercy Corps (Doreen)","Nordic Impact Fund","AtoZ Impact","Rippleworks","Uncap (Esther Ndithi)","Moonshot (Kweks)","VBAN (Kelvin)"],notes:""},
+  {id:"c8",name:"24:7 Group — Venue",sector:"Cultural Infrastructure",stage:"Pre-Development",ask:750000,currency:"USD",instrument:"Equity",founder_gender:"Male",location:"Kajiado County, Kenya",website:"24-7.co.ke",revenue:"Pre-development",description:"East Africa's first purpose-built festival ground and cultural activation hub in Kajiado County — 1 hour from Nairobi. 6-10 acre site targeting 5,000–15,000+ attendees.",founder_name:"Dunn Gwaro",founder_email:"events@24-7.co.ke",highlights:["East Africa's first experiential venue","Five revenue streams","24-hr programming","Scenic Maasai landscape"],current_step:2,color:"#DC2626",suggested_investors:["Africa Climate Ventures","Katapult","Mercy Corps (Doreen)","MCE","Livelihood Impact Fund","Kawisafi"],notes:""}
+];
+
+const SEED_INV = [
+  {id:"i1",name:"Zawadi",company:"Incofin",type:"Debt/Impact",focus:"Agricultural finance, cooperative models, smallholder lending, East Africa.",stage_pref:"Seed–Growth",ticket_size:"$100K–$2M",geography:"Africa",email:"",notes:"Top match for Lubembo, Kiasili, Daima. High priority."},
+  {id:"i2",name:"Esther Ndithi",company:"Uncap",type:"Revenue Share",focus:"Revenue-based financing for African SMEs with predictable contracts.",stage_pref:"SME",ticket_size:"$100K–$500K",geography:"Africa",email:"",notes:"Best fit for Sensys."},
+  {id:"i3",name:"Paul & Cynthia",company:"Talanton",type:"Debt/Impact",focus:"SME debt, agricultural and blended finance across Africa.",stage_pref:"SME–Early",ticket_size:"$50K–$500K",geography:"Africa",email:"",notes:"Relevant across agricultural portfolio."},
+  {id:"i4",name:"Eugene",company:"GIF",type:"Impact",focus:"Impact investing with agricultural and education mandate.",stage_pref:"Early–Growth",ticket_size:"$100K–$1M",geography:"Africa",email:"",notes:""},
+  {id:"i5",name:"Dennis & Nelson",company:"Yunus Social Business",type:"Impact/Debt",focus:"Social business model, cooperative structures, bottom-of-pyramid finance.",stage_pref:"Early–Growth",ticket_size:"$100K–$2M",geography:"Africa",email:"",notes:"Strong fit for Daima cooperative BaaS model."},
+  {id:"i6",name:"Christophe",company:"Beyond Capital",type:"Impact VC",focus:"Impact-first, East Africa, EdTech, agriculture, creative economy.",stage_pref:"Seed–Series A",ticket_size:"$250K–$3M",geography:"East Africa",email:"",notes:"Covers Learnademy, 24:7 Agency, Daima."},
+  {id:"i7",name:"Nick",company:"Naiban",type:"Syndicate",focus:"Early-stage African startups.",stage_pref:"Pre-Seed–Seed",ticket_size:"$50K–$500K",geography:"Africa",email:"",notes:"Portfolio overview sent May 2026."},
+  {id:"i8",name:"Kelvin",company:"VBAN",type:"Syndicate",focus:"Angel syndicate across sectors.",stage_pref:"Pre-Seed–Seed",ticket_size:"$25K–$250K",geography:"Africa",email:"",notes:""},
+  {id:"i9",name:"Kweks",company:"Moonshot",type:"Syndicate",focus:"African tech syndicate — SaaS, fintech, EdTech.",stage_pref:"Pre-Seed–Seed",ticket_size:"$50K–$500K",geography:"Africa",email:"",notes:""},
+  {id:"i10",name:"Lucy",company:"Mastercard Foundation",type:"DFI/Grant",focus:"Education, financial inclusion, youth employment.",stage_pref:"Any",ticket_size:"$500K+",geography:"Africa",email:"",notes:"Strong fit for Learnademy."},
+  {id:"i11",name:"Doreen",company:"Mercy Corps",type:"Impact/DFI",focus:"Agriculture, education, digital access, community resilience.",stage_pref:"Early–Growth",ticket_size:"$250K–$5M",geography:"Africa",email:"",notes:""},
+  {id:"i12",name:"Enza Capital",company:"Enza Capital",type:"VC",focus:"African SaaS, fintech, EdTech — seed to Series A.",stage_pref:"Seed–Series A",ticket_size:"$500K–$5M",geography:"Africa",email:"",notes:"Top match for Kijani and Learnademy."},
+  {id:"i13",name:"Leone",company:"Grassroot",type:"Debt/Impact",focus:"Grassroots agricultural development and SME working capital.",stage_pref:"SME",ticket_size:"$50K–$300K",geography:"Africa",email:"",notes:""},
+  {id:"i14",name:"Stanley",company:"Sayuni",type:"Debt/Impact",focus:"SME debt and impact investing, East Africa.",stage_pref:"SME",ticket_size:"$50K–$500K",geography:"East Africa",email:"",notes:""},
+  {id:"i15",name:"Valentine",company:"Contact",type:"Contact",focus:"Received portfolio overview May 2026. Reviewing deal flow.",stage_pref:"N/A",ticket_size:"N/A",geography:"N/A",email:"",notes:"Follow up to identify areas of interest."}
+];
+
+// ═══ STATE ════════════════════════════════════════
+const S = { tab:"overview", view:null, modal:null, companies:[], investors:[] };
+
+// ═══ HELPERS ══════════════════════════════════════
+function toast(msg,dur=2400){
+  const el=document.getElementById("toast");
+  el.textContent=msg; el.classList.add("show");
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),dur);
+}
+function usd(c){ return c.currency==="EUR"?c.ask*1.08:c.currency==="KES"?c.ask/130:c.ask; }
+function fmt(ask,cur){ return cur==="EUR"?`€${(ask/1000).toFixed(0)}K`:cur==="KES"?`KES ${(ask/1000).toFixed(0)}K`:`$${(ask/1000).toFixed(0)}K`; }
+function progBar(co){
+  return `<div class="prog">${STEPS.map((_,i)=>`<div class="prog-seg" style="background:${i<co.current_step?co.color:'var(--border)'}"></div>`).join("")}</div>`;
+}
+function switchTab(tab){
+  S.tab=tab; S.view=null; S.modal=null;
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active",n.dataset.tab===tab));
+  render();
+}
+function openCompany(id){ S.view=S.companies.find(c=>c.id===id); S.tab="portfolio"; document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active",n.dataset.tab==="portfolio")); render(); }
+function openInvestor(id){ S.view=S.investors.find(i=>i.id===id); render(); }
+
+// ═══ INIT & DATA LOAD ═════════════════════════════
+async function init(){
+  try {
+    // Load companies
+    const {data:cos,error:e1} = await SB.from("companies").select("*").order("created_at",{ascending:true});
+    if(e1) throw e1;
+    // Load investors
+    const {data:invs,error:e2} = await SB.from("investors").select("*").order("created_at",{ascending:true});
+    if(e2) throw e2;
+
+    // Seed if empty
+    if(!cos || cos.length===0){
+      const {data:seeded,error:se} = await SB.from("companies").insert(SEED_COS).select();
+      if(se) throw se;
+      S.companies = seeded;
+    } else { S.companies = cos; }
+
+    if(!invs || invs.length===0){
+      const {data:seeded,error:se} = await SB.from("investors").insert(SEED_INV).select();
+      if(se) throw se;
+      S.investors = seeded;
+    } else { S.investors = invs; }
+
+    document.getElementById("loading").style.display="none";
+    document.getElementById("app").style.display="flex";
+    render();
+  } catch(err){
+    console.error(err);
+    document.getElementById("loading").innerHTML=`
+      <div style="font-family:'DM Serif Display',serif;font-size:24px;color:#fff;margin-bottom:16px">GATEWAY<span style="color:#C9A84C"> GLOBAL</span></div>
+      <div style="background:rgba(255,255,255,0.08);border-radius:12px;padding:24px;max-width:420px;text-align:center">
+        <div style="color:#f87171;font-weight:700;margin-bottom:10px">Connection Error</div>
+        <div style="color:rgba(255,255,255,0.6);font-size:13px;line-height:1.7">${err.message||JSON.stringify(err)}</div>
+        <button onclick="init()" style="margin-top:16px;padding:8px 20px;background:#C9A84C;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Retry</button>
+      </div>`;
+  }
+}
+
+// ═══ DB OPERATIONS ════════════════════════════════
+async function updateCompany(id, updates){
+  const {error} = await SB.from("companies").update(updates).eq("id",id);
+  if(error){ toast("Save failed: "+error.message); return false; }
+  S.companies = S.companies.map(c=>c.id===id?{...c,...updates}:c);
+  if(S.view?.id===id) S.view={...S.view,...updates};
+  toast("Saved ✓"); return true;
+}
+async function insertCompany(data){
+  const {data:row,error} = await SB.from("companies").insert(data).select().single();
+  if(error){ toast("Error: "+error.message); return null; }
+  S.companies.push(row); toast("Company added ✓"); return row;
+}
+async function deleteCompany(id){
+  const {error} = await SB.from("companies").delete().eq("id",id);
+  if(error){ toast("Delete failed: "+error.message); return false; }
+  S.companies = S.companies.filter(c=>c.id!==id); toast("Deleted ✓"); return true;
+}
+async function updateInvestor(id, updates){
+  const {error} = await SB.from("investors").update(updates).eq("id",id);
+  if(error){ toast("Save failed: "+error.message); return false; }
+  S.investors = S.investors.map(i=>i.id===id?{...i,...updates}:i);
+  if(S.view?.id===id) S.view={...S.view,...updates};
+  toast("Saved ✓"); return true;
+}
+async function insertInvestor(data){
+  const {data:row,error} = await SB.from("investors").insert(data).select().single();
+  if(error){ toast("Error: "+error.message); return null; }
+  S.investors.push(row); toast("Investor added ✓"); return row;
+}
+async function deleteInvestor(id){
+  const {error} = await SB.from("investors").delete().eq("id",id);
+  if(error){ toast("Delete failed: "+error.message); return false; }
+  S.investors = S.investors.filter(i=>i.id!==id); toast("Deleted ✓"); return true;
+}
+
+// ═══ RENDER ═══════════════════════════════════════
+function render(){
+  const mc=document.getElementById("main");
+  if(!mc) return;
+  if(S.tab==="overview") mc.innerHTML=renderOverview();
+  else if(S.tab==="portfolio") mc.innerHTML=S.view?renderCoDetail(S.view):renderPortfolio();
+  else if(S.tab==="pipeline") mc.innerHTML=renderPipeline();
+  else if(S.tab==="investors") mc.innerHTML=S.view?renderInvDetail(S.view):renderInvestors();
+  else if(S.tab==="analytics") mc.innerHTML=renderAnalytics();
+  if(S.modal) buildModal();
+  requestAnimationFrame(buildCharts);
+}
+
+// ── OVERVIEW ──────────────────────────────────────
+function renderOverview(){
+  const cs=S.companies, total=cs.reduce((s,c)=>s+usd(c),0);
+  const avg=cs.length?Math.round(cs.reduce((s,c)=>s+(c.current_step/STEPS.length)*100,0)/cs.length):0;
+  return `
+  <div class="pg-title">Portfolio Overview</div>
+  <div class="pg-sub">Gateway Global · Funding Advisory · ${new Date().toLocaleDateString("en-GB",{month:"long",year:"numeric"})}</div>
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-lbl">Active Companies</div><div class="stat-val">${cs.length}</div><div class="stat-sub">${[...new Set(cs.map(c=>c.sector))].length} sectors</div></div>
+    <div class="stat-card"><div class="stat-lbl">Total Capital Sought</div><div class="stat-val">$${(total/1000000).toFixed(1)}M</div><div class="stat-sub">USD equivalent</div></div>
+    <div class="stat-card"><div class="stat-lbl">Investor Network</div><div class="stat-val">${S.investors.length}</div><div class="stat-sub">contacts tracked</div></div>
+    <div class="stat-card"><div class="stat-lbl">Avg. Progress</div><div class="stat-val">${avg}%</div><div class="stat-sub">pipeline completion</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="card-title">Capital ask by company (USD '000)</div><div style="position:relative;height:200px"><canvas id="askChart"></canvas></div></div>
+    <div class="card"><div class="card-title">Instrument mix</div><div style="position:relative;height:200px"><canvas id="instrChart"></canvas></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Pipeline progress</div>
+      ${cs.map(c=>`<div style="margin-bottom:13px;padding-bottom:13px;border-bottom:1px solid var(--border);cursor:pointer" onclick="openCompany('${c.id}')">
+        <div style="display:flex;justify-content:space-between;margin-bottom:7px">
+          <span style="font-size:12.5px;font-weight:700;color:var(--navy)">${c.name}</span>
+          <span class="badge" style="background:${c.color}1A;color:${c.color};font-size:10px">${STEPS[c.current_step-1]||"Not Started"}</span>
+        </div>
+        ${progBar(c)}
+        <div style="font-size:10px;color:var(--hint);margin-top:3px">${fmt(c.ask,c.currency)} · ${c.instrument} · Step ${c.current_step}/${STEPS.length}</div>
+      </div>`).join("")}
+    </div>
+    <div class="card">
+      <div class="card-title">Portfolio at a glance</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Company</th><th>Ask</th><th>Stage</th><th>%</th></tr></thead>
+        <tbody>${cs.map(c=>`<tr onclick="openCompany('${c.id}')">
+          <td><div style="display:flex;align-items:center;gap:8px"><div style="width:7px;height:7px;border-radius:50%;background:${c.color};flex-shrink:0"></div><strong style="font-size:12px">${c.name}</strong></div></td>
+          <td><strong style="color:${c.color}">${fmt(c.ask,c.currency)}</strong></td>
+          <td><span class="badge" style="font-size:10px">${c.stage}</span></td>
+          <td><span style="font-size:11px;font-weight:700;color:var(--hint)">${Math.round(c.current_step/STEPS.length*100)}%</span></td>
+        </tr>`).join("")}</tbody>
+      </table></div>
+    </div>
+  </div>`;
+}
+
+// ── PORTFOLIO ─────────────────────────────────────
+function renderPortfolio(){
+  return `
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div><div class="pg-title">Portfolio Companies</div><div class="pg-sub">${S.companies.length} companies under advisory mandate</div></div>
+    <button class="btn btn-gold" onclick="openModal('addCo')">+ Add Company</button>
+  </div>
+  <div class="filters">
+    <input placeholder="Search…" id="co-q" oninput="refreshCards()">
+    <select id="co-instr" onchange="refreshCards()"><option value="">All instruments</option><option>Equity</option><option>Debt</option><option>Debt + Grant</option></select>
+    <select id="co-stage" onchange="refreshCards()"><option value="">All stages</option>${[...new Set(S.companies.map(c=>c.stage))].map(s=>`<option>${s}</option>`).join("")}</select>
+  </div>
+  <div class="co-grid" id="co-grid">${getCards()}</div>`;
+}
+function getCards(){
+  const q=document.getElementById("co-q")?.value.toLowerCase()||"";
+  const instr=document.getElementById("co-instr")?.value||"";
+  const stage=document.getElementById("co-stage")?.value||"";
+  return S.companies.filter(c=>(!q||c.name.toLowerCase().includes(q)||c.sector.toLowerCase().includes(q))&&(!instr||c.instrument.includes(instr))&&(!stage||c.stage===stage)).map(c=>`
+    <div class="co-card" onclick="openCompany('${c.id}')">
+      <div class="co-accent" style="background:${c.color}"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:4px">
+        <span class="badge ${c.founder_gender==='Female'?'badge-pink':'badge-navy'}" style="font-size:10px">${c.founder_gender==='Female'?'♀ Female':c.founder_gender==='Male'?'♂ Male':'⊙ TBC'}</span>
+      </div>
+      <div class="co-name">${c.name}</div>
+      <div class="co-sector">${c.sector} · ${c.location}</div>
+      <div class="co-desc">${c.description}</div>
+      <div class="co-meta">
+        <span class="badge" style="background:${c.color}1A;color:${c.color}">${fmt(c.ask,c.currency)}</span>
+        <span class="badge">${c.instrument}</span>
+        <span class="badge">${c.stage}</span>
+      </div>
+      ${progBar(c)}
+      <div class="prog-lbl">${STEPS[c.current_step-1]||"Not Started"} · Step ${c.current_step} of ${STEPS.length}</div>
+    </div>`).join("");
+}
+function refreshCards(){ const el=document.getElementById("co-grid"); if(el) el.innerHTML=getCards(); }
+
+function renderCoDetail(co){
+  return `
+  <button class="back-btn" onclick="S.view=null;render()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg> Back to Portfolio</button>
+  <div class="detail-grid">
+    <div>
+      <div class="card" style="margin-bottom:14px;border-top:4px solid ${co.color}">
+        <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+          <div>
+            <div style="font-size:22px;font-weight:900;color:var(--navy);letter-spacing:-0.025em">${co.name}</div>
+            <div style="font-size:12px;color:var(--hint);margin-top:3px">${co.sector} · ${co.location}${co.website?` · <a href="https://${co.website}" target="_blank" style="color:var(--gold);text-decoration:none">${co.website}</a>`:""}</div>
+          </div>
+          <span class="badge ${co.founder_gender==='Female'?'badge-pink':'badge-navy'}">${co.founder_gender==='Female'?'♀ Female Founder':'♂ Male Founder'}</span>
+        </div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.75;margin-bottom:20px">${co.description}</p>
+        <div class="kv-grid">
+          ${[["Ask",fmt(co.ask,co.currency)+" "+co.currency],["Instrument",co.instrument],["Stage",co.stage],["Revenue",co.revenue||"N/A"],["Founder",co.founder_name||"TBC"],["Contact",co.founder_email||"Not recorded"]].map(([l,v])=>`<div class="kv-box"><div class="kv-lbl">${l}</div><div class="kv-val">${v}</div></div>`).join("")}
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Key highlights</div>
+        <ul class="hl-list">${(co.highlights||[]).map(h=>`<li><div class="dot" style="background:${co.color}"></div>${h}</li>`).join("")}</ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Suggested investors</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px">${(co.suggested_investors||[]).map(i=>`<span class="badge">${i}</span>`).join("")}</div>
+        ${co.notes?`<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:12.5px;color:var(--muted);line-height:1.7">${co.notes}</div>`:""}
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title">Investment journey</div>
+        ${STEPS.map((step,i)=>{
+          const done=i<co.current_step,cur=i===co.current_step-1;
+          return `<div class="journey-step">
+            <div class="step-circle ${done&&!cur?'done':''} ${cur?'current':''}">${done&&!cur?'✓':i+1}</div>
+            <div style="padding-top:4px">
+              <div class="step-name ${done&&!cur?'done':''} ${cur?'current':''}">${step}</div>
+              ${cur?`<div class="step-tag">▶ Current stage</div>`:""}
+            </div>
+          </div>`;
+        }).join("")}
+        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="doAdvance('${co.id}')" ${co.current_step>=STEPS.length?'disabled':''}>Advance →</button>
+          <button class="btn btn-sm" onclick="openModal('editCo','${co.id}')">Edit</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function doAdvance(id){
+  const co=S.companies.find(c=>c.id===id);
+  if(!co||co.current_step>=STEPS.length) return;
+  await updateCompany(id,{current_step:co.current_step+1});
+  render();
+}
+
+// ── PIPELINE ──────────────────────────────────────
+function renderPipeline(){
+  return `
+  <div class="pg-title">Deal Pipeline</div>
+  <div class="pg-sub">Investment journey across all portfolio companies</div>
+  <div class="pipe-board">
+    ${STEPS.map((step,si)=>{
+      const items=S.companies.filter(c=>c.current_step-1===si);
+      return `<div class="pipe-col">
+        <div class="pipe-col-head">${step}<span class="pipe-badge">${items.length}</span></div>
+        ${items.length===0?`<div style="text-align:center;color:var(--border2);font-size:22px;padding:12px 0">○</div>`:""}
+        ${items.map(c=>`<div class="pipe-item" style="border-left-color:${c.color}" onclick="openCompany('${c.id}')">
+          <div class="pipe-item-name">${c.name}</div>
+          <div class="pipe-item-sub">${fmt(c.ask,c.currency)} · ${c.instrument}</div>
+        </div>`).join("")}
+      </div>`;
+    }).join("")}
+  </div>
+  <div class="card">
+    <div class="card-title">Full pipeline summary</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Company</th><th>Sector</th><th>Ask</th><th>Instrument</th><th>Current Stage</th><th>Progress</th><th>Action</th></tr></thead>
+      <tbody>${S.companies.map(c=>`<tr>
+        <td onclick="openCompany('${c.id}')"><div style="display:flex;align-items:center;gap:8px"><div style="width:7px;height:7px;border-radius:50%;background:${c.color};flex-shrink:0"></div><strong>${c.name}</strong></div></td>
+        <td style="color:var(--muted)">${c.sector}</td>
+        <td><strong style="color:${c.color}">${fmt(c.ask,c.currency)}</strong></td>
+        <td><span class="badge">${c.instrument}</span></td>
+        <td><span class="badge" style="background:${c.color}1A;color:${c.color}">${STEPS[c.current_step-1]}</span></td>
+        <td><div style="display:flex;gap:2px;align-items:center">
+          ${STEPS.map((_,i)=>`<div style="width:14px;height:5px;border-radius:2px;background:${i<c.current_step?c.color:'var(--border)'}"></div>`).join("")}
+          <span style="font-size:10px;color:var(--hint);margin-left:4px">${Math.round(c.current_step/STEPS.length*100)}%</span>
+        </div></td>
+        <td><button class="btn btn-sm btn-primary" onclick="doAdvance('${c.id}')" ${c.current_step>=STEPS.length?'disabled':''}>Advance →</button></td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+  </div>`;
+}
+
+// ── INVESTORS ─────────────────────────────────────
+function renderInvestors(){
+  return `
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div><div class="pg-title">Investor Network</div><div class="pg-sub">${S.investors.length} investors and contacts tracked</div></div>
+    <button class="btn btn-gold" onclick="openModal('addInv')">+ Add Investor</button>
+  </div>
+  <div class="stats-row" style="grid-template-columns:repeat(5,1fr);margin-bottom:18px">
+    ${[["VCs","VC","#2563EB"],["Impact","Impact","#059669"],["Debt/RBF","Debt","#C9A84C"],["Syndicates","Syndicate","#7B5EA7"],["DFI/Other","DFI","#D97706"]].map(([lbl,key,col])=>`
+    <div class="stat-card" style="border-top-color:${col}"><div class="stat-lbl">${lbl}</div><div class="stat-val" style="color:${col};font-size:22px">${S.investors.filter(i=>i.type.includes(key)).length}</div></div>`).join("")}
+  </div>
+  <div class="filters">
+    <input placeholder="Search investors…" id="inv-q" oninput="refreshInvCards()">
+    <select id="inv-type" onchange="refreshInvCards()"><option value="">All types</option>${[...new Set(S.investors.map(i=>i.type))].map(t=>`<option>${t}</option>`).join("")}</select>
+  </div>
+  <div class="inv-grid" id="inv-grid">${getInvCards()}</div>`;
+}
+function getInvCards(){
+  const q=document.getElementById("inv-q")?.value.toLowerCase()||"";
+  const t=document.getElementById("inv-type")?.value||"";
+  return S.investors.filter(i=>(!q||i.name.toLowerCase().includes(q)||i.company.toLowerCase().includes(q)||i.focus.toLowerCase().includes(q))&&(!t||i.type===t)).map(inv=>`
+    <div class="inv-card" onclick="openInvestor('${inv.id}')">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <div><div style="font-size:13.5px;font-weight:800;color:var(--navy)">${inv.name}</div><div style="font-size:11.5px;color:var(--gold);font-weight:700">${inv.company}</div></div>
+        <span class="badge badge-blue" style="font-size:10px">${inv.type}</span>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);line-height:1.55;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${inv.focus}</div>
+      <div style="font-size:11px;color:var(--hint);margin-bottom:3px">💰 ${inv.ticket_size}</div>
+      <div style="font-size:11px;color:var(--hint);margin-bottom:3px">📍 ${inv.geography}</div>
+      <div style="font-size:11px;color:var(--hint)">⏱ ${inv.stage_pref}</div>
+      ${inv.notes?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10.5px;color:var(--hint);font-style:italic">${inv.notes.slice(0,70)}${inv.notes.length>70?"…":""}</div>`:""}
+    </div>`).join("");
+}
+function refreshInvCards(){ const el=document.getElementById("inv-grid"); if(el) el.innerHTML=getInvCards(); }
+
+function renderInvDetail(inv){
+  const rel=S.companies.filter(c=>(c.suggested_investors||[]).some(s=>s.toLowerCase().includes(inv.company.toLowerCase().split(" ")[0])||s.toLowerCase().includes(inv.name.toLowerCase().split(" ")[0])));
+  return `
+  <button class="back-btn" onclick="S.view=null;render()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg> Back to Investors</button>
+  <div class="grid2">
+    <div class="card">
+      <div style="margin-bottom:18px">
+        <div style="font-size:21px;font-weight:900;color:var(--navy)">${inv.name}</div>
+        <div style="font-size:13px;color:var(--gold);font-weight:700;margin-top:2px">${inv.company}</div>
+      </div>
+      ${[["Type",inv.type],["Focus",inv.focus],["Stage",inv.stage_pref],["Ticket",inv.ticket_size],["Region",inv.geography],["Email",inv.email||"Not recorded"]].map(([l,v])=>`
+      <div style="display:grid;grid-template-columns:110px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:0.07em">${l}</span>
+        <span style="font-size:12.5px">${v}</span>
+      </div>`).join("")}
+      ${inv.notes?`<div style="background:var(--surface2);border-radius:var(--r-sm);padding:13px;margin-top:14px"><div style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;margin-bottom:6px">Notes</div><div style="font-size:12.5px;color:var(--muted);line-height:1.65">${inv.notes}</div></div>`:""}
+      <div style="margin-top:14px"><button class="btn btn-sm" onclick="openModal('editInv','${inv.id}')">Edit details</button></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Relevant portfolio companies</div>
+      ${rel.length===0?`<div style="font-size:12.5px;color:var(--hint)">No direct matches found.</div>`:""}
+      ${rel.map(c=>`<div onclick="openCompany('${c.id}')" style="background:var(--surface2);border-radius:var(--r-sm);padding:13px;margin-bottom:9px;cursor:pointer;border-left:3px solid ${c.color}">
+        <div style="font-size:13px;font-weight:800;color:var(--navy)">${c.name}</div>
+        <div style="font-size:11px;color:var(--hint);margin-top:2px">${c.sector} · ${fmt(c.ask,c.currency)} · ${c.instrument}</div>
+      </div>`).join("")}
+    </div>
+  </div>`;
+}
+
+// ── ANALYTICS ─────────────────────────────────────
+function renderAnalytics(){
+  const cs=S.companies, total=cs.reduce((s,c)=>s+usd(c),0);
+  const avg=cs.length?Math.round(cs.reduce((s,c)=>s+(c.current_step/STEPS.length)*100,0)/cs.length):0;
+  return `
+  <div class="pg-title">Analytics</div>
+  <div class="pg-sub">Portfolio performance and investor network insights</div>
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-lbl">Total Portfolio</div><div class="stat-val">${cs.length}</div><div class="stat-sub">companies</div></div>
+    <div class="stat-card"><div class="stat-lbl">Capital Sought</div><div class="stat-val">$${(total/1000000).toFixed(1)}M</div><div class="stat-sub">USD equivalent</div></div>
+    <div class="stat-card"><div class="stat-lbl">Avg. Progress</div><div class="stat-val">${avg}%</div><div class="stat-sub">pipeline completion</div></div>
+    <div class="stat-card"><div class="stat-lbl">Investors</div><div class="stat-val">${S.investors.length}</div><div class="stat-sub">tracked</div></div>
+  </div>
+  <div class="grid2" style="margin-bottom:15px">
+    <div class="card"><div class="card-title">Capital ask by company (USD '000)</div><div style="position:relative;height:220px"><canvas id="askChart2"></canvas></div></div>
+    <div class="card"><div class="card-title">Capital ask by sector (USD '000)</div><div style="position:relative;height:220px"><canvas id="sectorChart"></canvas></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Pipeline funnel</div>
+      <div class="funnel-bars">
+        ${STEPS.map((step,i)=>{
+          const count=cs.filter(c=>c.current_step-1>=i).length;
+          const pct=cs.length?count/cs.length:0;
+          const h=Math.max(Math.round(pct*95),pct>0?10:0);
+          return `<div class="funnel-col">
+            <div class="funnel-count">${count}</div>
+            <div class="funnel-bar" style="height:${h}px;background:rgba(27,48,96,${0.12+pct*0.78})"></div>
+            <div class="funnel-lbl">${step}</div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>
+    <div class="card"><div class="card-title">Investor type breakdown</div><div style="position:relative;height:160px"><canvas id="invTypeChart"></canvas></div></div>
+  </div>`;
+}
+
+// ═══ CHARTS ═══════════════════════════════════════
+const CI={};
+function destroyChart(id){ if(CI[id]){CI[id].destroy();delete CI[id];} }
+function buildCharts(){
+  const cs=S.companies;
+  const CC=["#1B3060","#2D7D46","#7B5EA7","#C9A84C","#1A6B3C","#2563EB","#D97706","#DC2626","#059669","#9333EA","#0891B2","#BE185D"];
+  const coColors=cs.map((c,i)=>c.color&&c.color!==''?c.color:CC[i%CC.length]);
+
+  if(document.getElementById("askChart")){
+    destroyChart("askChart");
+    CI["askChart"]=new Chart(document.getElementById("askChart"),{type:"bar",data:{labels:cs.map(c=>c.name.split(" ")[0]),datasets:[{data:cs.map(c=>Math.round(usd(c)/1000)),backgroundColor:coColors,borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`$${ctx.parsed.y}K`}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:"rgba(0,0,0,0.04)"},ticks:{font:{size:10},callback:v=>`$${v}K`}}}}});
+  }
+  if(document.getElementById("instrChart")){
+    destroyChart("instrChart");
+    const instrs=[...new Set(cs.map(c=>c.instrument))];
+    CI["instrChart"]=new Chart(document.getElementById("instrChart"),{type:"doughnut",data:{labels:instrs,datasets:[{data:instrs.map(i=>cs.filter(c=>c.instrument===i).length),backgroundColor:CC,borderWidth:2,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,cutout:"60%",plugins:{legend:{position:"right",labels:{font:{size:11},padding:10}}}}});
+  }
+  if(document.getElementById("askChart2")){
+    destroyChart("askChart2");
+    CI["askChart2"]=new Chart(document.getElementById("askChart2"),{type:"bar",data:{labels:cs.map(c=>c.name.split(" ")[0]),datasets:[{data:cs.map(c=>Math.round(usd(c)/1000)),backgroundColor:coColors,borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`$${ctx.parsed.y}K`}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:"rgba(0,0,0,0.04)"},ticks:{font:{size:10},callback:v=>`$${v}K`}}}}});
+  }
+  if(document.getElementById("sectorChart")){
+    destroyChart("sectorChart");
+    const sectors=[...new Set(cs.map(c=>c.sector))];
+    CI["sectorChart"]=new Chart(document.getElementById("sectorChart"),{type:"bar",data:{labels:sectors.map(s=>s.split("/")[0].trim()),datasets:[{data:sectors.map(s=>Math.round(cs.filter(c=>c.sector===s).reduce((t,c)=>t+usd(c),0)/1000)),backgroundColor:CC,borderRadius:6,borderSkipped:false}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`$${ctx.parsed.x}K`}}},scales:{x:{grid:{color:"rgba(0,0,0,0.04)"},ticks:{font:{size:10},callback:v=>`$${v}K`}},y:{grid:{display:false},ticks:{font:{size:10}}}}}});
+  }
+  if(document.getElementById("invTypeChart")){
+    destroyChart("invTypeChart");
+    const types=[...new Set(S.investors.map(i=>i.type))];
+    CI["invTypeChart"]=new Chart(document.getElementById("invTypeChart"),{type:"doughnut",data:{labels:types,datasets:[{data:types.map(t=>S.investors.filter(i=>i.type===t).length),backgroundColor:CC,borderWidth:2,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,cutout:"55%",plugins:{legend:{position:"right",labels:{font:{size:11},padding:8}}}}});
+  }
+}
+
+// ═══ MODALS ═══════════════════════════════════════
+function openModal(type,id){ S.modal={type,id:id||null}; buildModal(); }
+function closeModal(){ document.getElementById("modal-el")?.remove(); S.modal=null; }
+function buildModal(){
+  document.getElementById("modal-el")?.remove();
+  const {type,id}=S.modal;
+  const co=id?S.companies.find(c=>c.id===id):null;
+  const inv=id?S.investors.find(i=>i.id===id):null;
+  const wrap=document.createElement("div");
+  wrap.id="modal-el"; wrap.className="modal-overlay";
+  wrap.onclick=e=>{ if(e.target===wrap) closeModal(); };
+
+  if(type==="addCo"||type==="editCo"){
+    const d=co||{name:"",sector:"",stage:"Early Stage",ask:"",currency:"USD",instrument:"Equity",founder_gender:"Male",location:"Kenya",website:"",revenue:"",description:"",founder_name:"",founder_email:"",highlights:[],suggested_investors:[],notes:""};
+    wrap.innerHTML=`<div class="modal-box">
+      <div class="modal-title">${co?"Edit Company":"Add New Company"}</div>
+      <div class="form-row"><label class="form-lbl">Company Name *</label><input class="form-input" id="f-name" value="${d.name||""}"></div>
+      <div class="form-2col">
+        <div class="form-row"><label class="form-lbl">Sector</label><input class="form-input" id="f-sector" value="${d.sector||""}"></div>
+        <div class="form-row"><label class="form-lbl">Stage</label><input class="form-input" id="f-stage" value="${d.stage||""}"></div>
+      </div>
+      <div class="form-2col">
+        <div class="form-row"><label class="form-lbl">Ask Amount</label><input class="form-input" id="f-ask" type="number" value="${d.ask||""}"></div>
+        <div class="form-row"><label class="form-lbl">Currency</label><select class="form-input" id="f-currency">${["USD","EUR","KES"].map(o=>`<option ${d.currency===o?"selected":""}>${o}</option>`).join("")}</select></div>
+      </div>
+      <div class="form-2col">
+        <div class="form-row"><label class="form-lbl">Instrument</label><select class="form-input" id="f-instr">${["Equity","Equity (8%)","Debt","Debt + Grant","Revenue Share"].map(o=>`<option ${d.instrument===o?"selected":""}>${o}</option>`).join("")}</select></div>
+        <div class="form-row"><label class="form-lbl">Founder Gender</label><select class="form-input" id="f-gender">${["Male","Female","TBC"].map(o=>`<option ${d.founder_gender===o?"selected":""}>${o}</option>`).join("")}</select></div>
+      </div>
+      <div class="form-2col">
+        <div class="form-row"><label class="form-lbl">Location</label><input class="form-input" id="f-location" value="${d.location||""}"></div>
+        <div class="form-row"><label class="form-lbl">Website</label><input class="form-input" id="f-website" value="${d.website||""}"></div>
+      </div>
+      <div class="form-2col">
+        <div class="form-row"><label class="form-lbl">Founder Name</label><input class="form-input" id="f-founder" value="${d.founder_name||""}"></div>
+        <div class="form-row"><label class="form-lbl">Founder Email</label><input class="form-input" id="f-email" value="${d.founder_email||""}"></div>
+      </div>
+      <div class="form-row"><label class="form-lbl">Revenue</label><input class="form-input" id="f-revenue" value="${d.revenue||""}"></div>
+      <div class="form-row"><label class="form-lbl">Description</label><textarea class="form-input" id="f-desc">${d.description||""}</textarea></div>
+      <div class="form-row"><label class="form-lbl">Key Highlights (one per line)</label><textarea class="form-input" id="f-hl">${(d.highlights||[]).join("\n")}</textarea></div>
+      <div class="form-row"><label class="form-lbl">Suggested Investors (comma-separated)</label><textarea class="form-input" id="f-inv">${(d.suggested_investors||[]).join(", ")}</textarea></div>
+      <div class="form-row"><label class="form-lbl">Notes</label><textarea class="form-input" id="f-notes">${d.notes||""}</textarea></div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveCo('${id||""}')">Save</button>
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        ${co?`<button class="btn btn-danger" style="margin-left:auto" onclick="doDeleteCo('${id}')">Delete</button>`:""}
+      </div>
+    </div>`;
+  }
+
+  if(type==="addInv"||type==="editInv"){
+    const d=inv||{name:"",company:"",type:"VC",focus:"",stage_pref:"",ticket_size:"",geography:"Africa",email:"",notes:""};
+    wrap.innerHTML=`<div class="modal-box">
+      <div class="modal-title">${inv?"Edit Investor":"Add New Investor"}</div>
+      <div class="form-2col">
+        <div class="form-row"><label class="form-lbl">Contact Name</label><input class="form-input" id="f-name" value="${d.name||""}"></div>
+        <div class="form-row"><label class="form-lbl">Company / Fund *</label><input class="form-input" id="f-company" value="${d.company||""}"></div>
+      </div>
+      <div class="form-2col">
+        <div class="form-row"><label class="form-lbl">Type</label><input class="form-input" id="f-type" value="${d.type||""}"></div>
+        <div class="form-row"><label class="form-lbl">Geography</label><input class="form-input" id="f-geo" value="${d.geography||""}"></div>
+      </div>
+      <div class="form-row"><label class="form-lbl">Investment Focus</label><textarea class="form-input" id="f-focus">${d.focus||""}</textarea></div>
+      <div class="form-2col">
+        <div class="form-row"><label class="form-lbl">Stage Preference</label><input class="form-input" id="f-stage" value="${d.stage_pref||""}"></div>
+        <div class="form-row"><label class="form-lbl">Ticket Size</label><input class="form-input" id="f-ticket" value="${d.ticket_size||""}"></div>
+      </div>
+      <div class="form-row"><label class="form-lbl">Email</label><input class="form-input" id="f-email" value="${d.email||""}"></div>
+      <div class="form-row"><label class="form-lbl">Notes</label><textarea class="form-input" id="f-notes">${d.notes||""}</textarea></div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveInv('${id||""}')">Save</button>
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        ${inv?`<button class="btn btn-danger" style="margin-left:auto" onclick="doDeleteInv('${id}')">Delete</button>`:""}
+      </div>
+    </div>`;
+  }
+  document.body.appendChild(wrap);
+}
+
+async function saveCo(existingId){
+  const name=document.getElementById("f-name")?.value.trim();
+  if(!name){toast("Company name is required");return;}
+  const vals={
+    name, sector:document.getElementById("f-sector")?.value||"",
+    stage:document.getElementById("f-stage")?.value||"",
+    ask:Number(document.getElementById("f-ask")?.value)||0,
+    currency:document.getElementById("f-currency")?.value||"USD",
+    instrument:document.getElementById("f-instr")?.value||"Equity",
+    founder_gender:document.getElementById("f-gender")?.value||"TBC",
+    location:document.getElementById("f-location")?.value||"",
+    website:document.getElementById("f-website")?.value||"",
+    founder_name:document.getElementById("f-founder")?.value||"",
+    founder_email:document.getElementById("f-email")?.value||"",
+    revenue:document.getElementById("f-revenue")?.value||"",
+    description:document.getElementById("f-desc")?.value||"",
+    highlights:(document.getElementById("f-hl")?.value||"").split("\n").map(s=>s.trim()).filter(Boolean),
+    suggested_investors:(document.getElementById("f-inv")?.value||"").split(",").map(s=>s.trim()).filter(Boolean),
+    notes:document.getElementById("f-notes")?.value||""
+  };
+  if(existingId){
+    await updateCompany(existingId,vals);
+    closeModal(); render();
+  } else {
+    vals.id="c"+Date.now();
+    vals.current_step=1;
+    vals.color=PALETTE[S.companies.length%PALETTE.length];
+    await insertCompany(vals);
+    closeModal(); render();
+  }
+}
+
+async function doDeleteCo(id){
+  if(!confirm("Delete this company? Cannot be undone.")) return;
+  await deleteCompany(id); S.view=null; closeModal(); render();
+}
+
+async function saveInv(existingId){
+  const company=document.getElementById("f-company")?.value.trim();
+  if(!company){toast("Company name is required");return;}
+  const vals={
+    name:document.getElementById("f-name")?.value||"",
+    company,
+    type:document.getElementById("f-type")?.value||"",
+    focus:document.getElementById("f-focus")?.value||"",
+    stage_pref:document.getElementById("f-stage")?.value||"",
+    ticket_size:document.getElementById("f-ticket")?.value||"",
+    geography:document.getElementById("f-geo")?.value||"",
+    email:document.getElementById("f-email")?.value||"",
+    notes:document.getElementById("f-notes")?.value||""
+  };
+  if(existingId){
+    await updateInvestor(existingId,vals);
+    closeModal(); render();
+  } else {
+    vals.id="i"+Date.now();
+    await insertInvestor(vals);
+    closeModal(); render();
+  }
+}
+
+async function doDeleteInv(id){
+  if(!confirm("Delete this investor? Cannot be undone.")) return;
+  await deleteInvestor(id); S.view=null; closeModal(); render();
+}
+
+// ═══ START ════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
